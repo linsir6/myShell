@@ -1,0 +1,86 @@
+#!/bin/bash
+findStrInOtherStrCount(){
+	result=$(echo $1 | grep -o "$2" | wc -l)
+	return $result
+}
+
+showDialog(){
+	osascript<<EOF
+	tell application "System Events"
+    	activate
+    	display Dialog "$1"
+	end tell
+EOF
+}
+
+checkSuccess(){
+	if [ $? -ne 0 ]; then
+    	echo "failed"
+    	showDialog $1
+    	exit -1
+	else
+    	echo "当前命令执行成功~"
+	fi
+}
+
+# 0. 判断是否clean
+clean=0
+if [ $1 -eq 1 ]
+then
+  clean=1
+fi  
+
+# 1. 配置一下项目的路径，cd到这里
+PROJECT_PATH="/Users/linsir/AndroidStudioProjects/autolite"
+APK_PAHT="NewsArticle/build/outputs/apk/debug/NewsArticle-debug.apk"
+PACKAGE_NAME="com.ss.android.auto"
+SPLASH_ACTIVITY="com.ss.android.auto/com.ss.android.auto.activity.SplashActivity"
+
+cd $PROJECT_PATH
+checkSuccess '当前工程路径不对'
+
+# 2. 编译当前的项目
+if [ $clean -eq 1 ]
+then
+  ./gradlew clean assembleDebug
+else
+  ./gradlew assembleDebug --offline
+fi  	  
+
+# 3. 检查编译是否失败
+checkSuccess './gradlew_assembleDebug_--offline_编译失败'
+
+# 4. 检测adb是否连接手机
+
+devices=$(adb devices)
+devices=`echo "${devices}" |sed s/[[:space:]]//g |sed 'N;s/\n//g'`
+findStrInOtherStrCount $devices 'device'
+str_device_count=$?
+	
+if [ $str_device_count -eq 1 ]
+then
+  showDialog '当前没有adb的手机'
+  exit -1
+elif [ $str_device_count -eq 2 ] 
+then
+  echo '即将adb...'
+else
+  showDialog '当前连接的手机过多'  
+  exit -1
+fi
+
+# 5. 安装然后
+
+adb install -r $APK_PAHT
+
+adb shell am force-stop $PACKAGE_NAME
+
+adb shell am start -n $SPLASH_ACTIVITY
+
+showDialog 'adb 安装成功啦～'
+
+
+
+
+
+
