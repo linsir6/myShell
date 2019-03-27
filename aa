@@ -71,7 +71,17 @@ fi
 
 # 5. 安装然后
 
-adb install -r $APK_PAHT
+adbResult=$(adb install -r $APK_PAHT)
+findStrInOtherStrCount $adbResult 'INSTALL_FAILED_VERSION_DOWNGRADE'
+str_count=$?
+if [ $str_count -eq 1 ]
+then
+  echo '手机上已经有高版本了，正在删除手机上的高版本apk...'
+  adb uninstall $PACKAGE_NAME
+  adb install -r $APK_PAHT
+fi
+
+checkSuccess 'adb 安装失败'
 
 adb shell am force-stop $PACKAGE_NAME
 
